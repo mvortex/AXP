@@ -34,7 +34,7 @@ Combines streams from other addons into one and provides much greater customisat
 - Limiting to a specific number of results per resolution
 - Proxy your streams with MediaFlow
 
-You simply configure your options, add any API keys for any services you use, then enable whichever addons you want, and install.
+You simply configure your options add any API keys for any services you use, then enable whichever addons you want, and install.
 
 The addon will scrape all results from all addons, apply your configuration, and give the results back to you in one go.
 
