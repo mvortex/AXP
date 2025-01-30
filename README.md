@@ -81,7 +81,7 @@ It currently supports:
 - Easynews
 - Easynews+
 - [Stremio GDrive](https://github.com/Viren070/stremio-gdrive-addon)
-- Custom: You can input an addon URL and name and it will parse as much information as it can.
+- Custom: You can input an addon URL, and name and it will parse as much information as it can.
 
 > [!NOTE]
 > The URL can either be a URL to the manifest.json or the url without the manifest.json
