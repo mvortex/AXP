@@ -1,8 +1,10 @@
 import { AddonDetail, StreamRequest } from '@aiostreams/types';
 import { ParsedStream, Config } from '@aiostreams/types';
 import { BaseWrapper } from './base';
-import { addonDetails } from '@aiostreams/utils';
+import { addonDetails, createLogger } from '@aiostreams/utils';
 import { Settings } from '@aiostreams/utils';
+
+const logger = createLogger('wrappers');
 
 // name, title, url
 export class Jackettio extends BaseWrapper {
@@ -53,7 +55,7 @@ const getJackettioConfigString = (
       mediaflowApiPassword: '',
       mediaflowPublicIp: '',
       qualities: [0, 360, 480, 720, 1080, 2160],
-      indexers: ['bitsearch', 'eztv', 'thepiratebay', 'therarbg', 'yts'],
+      indexers: Settings.JACKETT_INDEXERS,
       debridApiKey: debridApiKey,
     })
   ).toString('base64');
@@ -92,10 +94,7 @@ export async function getJackettioStreams(
       config,
       indexerTimeout
     );
-    return {
-      addonStreams: await jackettio.getParsedStreams(streamRequest),
-      addonErrors: [],
-    };
+    return jackettio.getParsedStreams(streamRequest);
   }
 
   // find all usable and enabled services
@@ -148,10 +147,7 @@ export async function getJackettioStreams(
       indexerTimeout
     );
 
-    return {
-      addonStreams: await jackettio.getParsedStreams(streamRequest),
-      addonErrors: [],
-    };
+    return jackettio.getParsedStreams(streamRequest);
   }
 
   // if no prioritised service is provided, create a jackettio instance for each service
@@ -162,6 +158,9 @@ export async function getJackettioStreams(
   }
 
   const streamPromises = servicesToUse.map(async (service) => {
+    logger.info(`Getting Jackettio streams for ${service.name}`, {
+      func: 'jackettio',
+    });
     const configString = getJackettioConfigString(
       service.id,
       service.credentials.apiKey
@@ -180,7 +179,8 @@ export async function getJackettioStreams(
   const streamsArray = await Promise.allSettled(streamPromises);
   streamsArray.forEach((result) => {
     if (result.status === 'fulfilled') {
-      addonStreams.push(...result.value);
+      addonStreams.push(...result.value.addonStreams);
+      addonErrors.push(...result.value.addonErrors);
     } else {
       addonErrors.push(result.reason.message);
     }

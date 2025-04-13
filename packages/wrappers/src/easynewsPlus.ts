@@ -1,4 +1,4 @@
-import { ParsedNameData, StreamRequest } from '@aiostreams/types';
+import { ParsedNameData, ParseResult, StreamRequest } from '@aiostreams/types';
 import { parseFilename } from '@aiostreams/parser';
 import { ParsedStream, Stream, Config } from '@aiostreams/types';
 import { BaseWrapper } from './base';
@@ -27,13 +27,17 @@ export class EasynewsPlus extends BaseWrapper {
     );
   }
 
-  protected parseStream(stream: Stream): ParsedStream {
-    return { ...super.parseStream(stream), type: 'usenet' };
+  protected parseStream(stream: Stream): ParseResult {
+    const parseResult = super.parseStream(stream);
+    if (parseResult.type !== 'error') {
+      parseResult.result.type = 'usenet';
+    }
+    return parseResult;
   }
 }
 
 const getEasynewsPlusConfigString = (username: string, password: string) => {
-  return `%7B%22username%22%3A%22${username}%22%2C%22password%22%3A%22${password}%22%2C%22sort1%22%3A%22Size%22%2C%22sort1Direction%22%3A%22Descending%22%2C%22sort2%22%3A%22Relevance%22%2C%22sort2Direction%22%3A%22Descending%22%2C%22sort3%22%3A%22Date%20%26%20Time%22%2C%22sort3Direction%22%3A%22Descending%22%7D`;
+  return `%7B%22username%22%3A%22${encodeURIComponent(username)}%22%2C%22password%22%3A%22${encodeURIComponent(password)}%22%2C%22sort1%22%3A%22Size%22%2C%22sort1Direction%22%3A%22Descending%22%2C%22sort2%22%3A%22Relevance%22%2C%22sort2Direction%22%3A%22Descending%22%2C%22sort3%22%3A%22Date%20%26%20Time%22%2C%22sort3Direction%22%3A%22Descending%22%7D`;
 };
 
 export async function getEasynewsPlusStreams(
@@ -83,9 +87,5 @@ export async function getEasynewsPlusStreams(
       : undefined
   );
 
-  const streams = await easynews.getParsedStreams(streamRequest);
-  return {
-    addonStreams: streams,
-    addonErrors: [],
-  };
+  return await easynews.getParsedStreams(streamRequest);
 }

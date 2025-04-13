@@ -3,11 +3,14 @@ import {
   Config,
   ParsedNameData,
   ParsedStream,
+  ParseResult,
   Stream,
   StreamRequest,
 } from '@aiostreams/types';
 import { parseFilename } from '@aiostreams/parser';
-import { Settings } from '@aiostreams/utils';
+import { createLogger, Settings } from '@aiostreams/utils';
+
+const logger = createLogger('wrappers');
 
 interface TorboxStream extends Stream {
   name: string;
@@ -44,13 +47,13 @@ export class Torbox extends BaseWrapper {
     );
   }
 
-  protected parseStream(stream: TorboxStream): ParsedStream {
+  protected parseStream(stream: TorboxStream): ParseResult {
     let type = stream.type;
     let personal = false;
     if (stream.name.includes('Your Media')) {
-      console.log(
-        `|INF| wrappers > torbox > detected personal stream in ${stream.name}`
-      );
+      logger.debug(`${stream.name} was detected as a personal stream.`, {
+        func: 'torbox',
+      });
       personal = true;
     }
     const [dQuality, dFilename, dSize, dLanguage, dAgeOrSeeders] =
@@ -131,7 +134,7 @@ export class Torbox extends BaseWrapper {
       infoHash = undefined;
     }
 
-    const parsedStream: ParsedStream = this.createParsedResult(
+    const parsedStream: ParseResult = this.createParsedResult(
       parsedFilename,
       stream,
       filename,
@@ -179,6 +182,5 @@ export async function getTorboxStreams(
       ? parseInt(torboxOptions.indexerTimeout)
       : undefined
   );
-  const streams = await torbox.getParsedStreams(streamRequest);
-  return { addonStreams: streams, addonErrors: [] };
+  return await torbox.getParsedStreams(streamRequest);
 }

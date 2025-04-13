@@ -1,8 +1,10 @@
 import { AddonDetail, StreamRequest } from '@aiostreams/types';
 import { ParsedStream, Config } from '@aiostreams/types';
 import { BaseWrapper } from './base';
-import { addonDetails } from '@aiostreams/utils';
+import { addonDetails, createLogger } from '@aiostreams/utils';
 import { Settings } from '@aiostreams/utils';
+
+const logger = createLogger('wrappers');
 
 export class Torrentio extends BaseWrapper {
   constructor(
@@ -50,14 +52,13 @@ export async function getTorrentioStreams(
   if (torrentioOptions.overrideUrl) {
     const torrentio = new Torrentio(
       null,
-      torrentioOptions.overrideUrl as string,
+      torrentioOptions.overrideUrl,
       torrentioOptions.overrideName,
       addonId,
       config,
       indexerTimeout
     );
-    const streams = await torrentio.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await torrentio.getParsedStreams(streamRequest);
   }
 
   // find all usable services
@@ -75,8 +76,7 @@ export async function getTorrentioStreams(
       config,
       indexerTimeout
     );
-    const streams = await torrentio.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await torrentio.getParsedStreams(streamRequest);
   }
 
   // otherwise, depending on the configuration, create multiple instances of torrentio or use a single instance with all services
@@ -92,10 +92,9 @@ export async function getTorrentioStreams(
 
   if (torrentioOptions.useMultipleInstances === 'true') {
     const promises = usableServices.map(async (service) => {
-      if (!service.enabled) {
-        return [];
-      }
-      console.log('Creating Torrentio instance with service:', service.id);
+      logger.info(`Getting Torrentio streams for ${service.name}`, {
+        func: 'torrentio',
+      });
       let configString = getServicePair(service.id, service.credentials);
       const torrentio = new Torrentio(
         configString,
@@ -110,7 +109,8 @@ export async function getTorrentioStreams(
     const results = await Promise.allSettled(promises);
     results.forEach((result) => {
       if (result.status === 'fulfilled') {
-        addonStreams.push(...result.value);
+        addonStreams.push(...result.value.addonStreams);
+        addonErrors.push(...result.value.addonErrors);
       } else if (result.status === 'rejected') {
         addonErrors.push(result.reason);
       }
@@ -132,7 +132,6 @@ export async function getTorrentioStreams(
       config,
       indexerTimeout
     );
-    const streams = await torrentio.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await torrentio.getParsedStreams(streamRequest);
   }
 }

@@ -20,11 +20,11 @@ export function gdriveFormat(
     const serviceShortName =
       serviceDetails.find((service) => service.id === stream.provider!.id)
         ?.shortName || stream.provider.id;
-    name += `[${serviceShortName}${cacheStatus}] `;
+    name += `[${serviceShortName}${cacheStatus}]\n`;
   }
 
   if (stream.torrent?.infoHash) {
-    name += `[P2P] `;
+    name += `[P2P]\n`;
   }
 
   name += `${stream.addon.name} ${stream.personal ? '(Your Media) ' : ''}`;
@@ -34,17 +34,22 @@ export function gdriveFormat(
     name += stream.resolution !== 'Unknown' ? stream.resolution + '' : '';
   }
 
-  let description: string = `${stream.quality !== 'Unknown' ? '🎥 ' + stream.quality + ' ' : ''}${stream.encode !== 'Unknown' ? '🎞️ ' + stream.encode : ''}`;
+  // let description: string = `${stream.quality !== 'Unknown' ? '🎥 ' + stream.quality + ' ' : ''}${stream.encode !== 'Unknown' ? '🎞️ ' + stream.encode : ''}`;
+  let description: string = '';
+  if (stream.quality || stream.encode) {
+    description += stream.quality !== 'Unknown' ? `🎥 ${stream.quality} ` : '';
+    description += stream.encode !== 'Unknown' ? `🎞️ ${stream.encode} ` : '';
+    description += '\n';
+  }
 
   if (stream.visualTags.length > 0 || stream.audioTags.length > 0) {
-    description += '\n';
-
     description +=
       stream.visualTags.length > 0
         ? `📺 ${stream.visualTags.join(' | ')}   `
         : '';
     description +=
       stream.audioTags.length > 0 ? `🎧 ${stream.audioTags.join(' | ')}` : '';
+    description += '\n';
   }
   if (
     stream.size ||
@@ -53,8 +58,6 @@ export function gdriveFormat(
     stream.usenet?.age ||
     stream.duration
   ) {
-    description += '\n';
-
     description += `📦 ${formatSize(stream.size || 0)} `;
     description += stream.duration
       ? `⏱️ ${formatDuration(stream.duration)} `
@@ -62,10 +65,13 @@ export function gdriveFormat(
     description +=
       (stream.torrent?.seeders !== undefined && !minimalistic) ||
       (minimalistic && stream.torrent?.seeders && !stream.provider?.cached)
-        ? `👥 ${stream.torrent.seeders}`
+        ? `👥 ${stream.torrent.seeders} `
         : '';
 
-    description += stream.usenet?.age ? `📅 ${stream.usenet.age}` : '';
+    description += stream.usenet?.age ? `📅 ${stream.usenet.age} ` : '';
+    description +=
+      stream.indexers && !minimalistic ? `🔍 ${stream.indexers}` : '';
+    description += '\n';
   }
 
   if (stream.languages.length !== 0) {
@@ -75,11 +81,18 @@ export function gdriveFormat(
         (language) => languageToEmoji(language) || language
       );
     }
-    description += `\n🔊 ${languages.join(' | ')}`;
+    description += `🔊 ${languages.join(' | ')}`;
+    description += '\n';
   }
 
   if (!minimalistic && stream.filename) {
-    description += `\n📄 ${stream.filename ? stream.filename : 'Unknown'}`;
+    description += stream.filename ? `📄 ${stream.filename}` : '📄 Unknown';
+    description += '\n';
   }
+  if (stream.message) {
+    description += `📢 ${stream.message}`;
+  }
+  description = description.trim();
+  name = name.trim();
   return { name, description };
 }

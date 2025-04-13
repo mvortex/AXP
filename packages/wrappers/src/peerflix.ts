@@ -1,15 +1,10 @@
 import { AddonDetail, StreamRequest } from '@aiostreams/types';
-import { ParsedStream, Stream, Config } from '@aiostreams/types';
+import { ParsedStream, Config } from '@aiostreams/types';
 import { BaseWrapper } from './base';
-import { addonDetails } from '@aiostreams/utils';
+import { addonDetails, createLogger } from '@aiostreams/utils';
 import { Settings } from '@aiostreams/utils';
 
-interface PeerflixStream extends Stream {
-  seed?: string;
-  sizeBytes?: number;
-  language?: string;
-  quality?: string;
-}
+const logger = createLogger('wrappers');
 
 export class Peerflix extends BaseWrapper {
   constructor(
@@ -53,7 +48,6 @@ export async function getPeerflixStreams(
   const indexerTimeout = peerflixOptions.indexerTimeout
     ? parseInt(peerflixOptions.indexerTimeout)
     : undefined;
-  console.log(JSON.stringify(peerflixOptions));
   // If overrideUrl is provided, use it to get streams and skip all other steps
   if (peerflixOptions.overrideUrl) {
     const peerflix = new Peerflix(
@@ -64,16 +58,16 @@ export async function getPeerflixStreams(
       config,
       indexerTimeout
     );
-    const streams = await peerflix.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await peerflix.getParsedStreams(streamRequest);
   }
 
   // find all usable services
   const usableServices = config.services.filter(
     (service) => supportedServices.includes(service.id) && service.enabled
   );
-  console.log(
-    `|DBG| wrappers > peerflix: Found ${usableServices.length} usable services: ${usableServices.map((service) => service.id).join(', ')}`
+  logger.debug(
+    `Found ${usableServices.length} usable services: ${usableServices.map((service) => service.id).join(', ')}`,
+    { func: 'peerflix' }
   );
 
   // if no usable services found, use peerflix without any configuration
@@ -86,8 +80,7 @@ export async function getPeerflixStreams(
       config,
       indexerTimeout
     );
-    const streams = await peerflix.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await peerflix.getParsedStreams(streamRequest);
   }
 
   // otherwise, depending on the configuration, create multiple instances of peerflix or use a single instance with all services
@@ -104,12 +97,9 @@ export async function getPeerflixStreams(
   if (peerflixOptions.useMultipleInstances === 'true') {
     let retrievedP2PStreams = false;
     const promises = usableServices.map(async (service) => {
-      if (!service.enabled) {
-        return [];
-      }
-      console.log(
-        `|DBG| wrappers > peerflix: Creating Peerflix instance with service: ${service.id}`
-      );
+      logger.info(`Getting Peerflix streams for ${service.name}`, {
+        func: 'peerflix',
+      });
       let configPairs = [getServicePair(service.id, service.credentials)];
       if (peerflixOptions.showP2PStreams === 'true' && !retrievedP2PStreams) {
         configPairs.push(['debridoptions', 'torrentlinks']);
@@ -129,7 +119,8 @@ export async function getPeerflixStreams(
     const results = await Promise.allSettled(promises);
     for (const result of results) {
       if (result.status === 'fulfilled') {
-        addonStreams.push(...result.value);
+        addonStreams.push(...result.value.addonStreams);
+        addonErrors.push(...result.value.addonErrors);
       } else {
         addonErrors.push(result.reason.message);
       }
@@ -155,7 +146,6 @@ export async function getPeerflixStreams(
       config,
       indexerTimeout
     );
-    const streams = await peerflix.getParsedStreams(streamRequest);
-    return { addonStreams: streams, addonErrors: [] };
+    return await peerflix.getParsedStreams(streamRequest);
   }
 }
